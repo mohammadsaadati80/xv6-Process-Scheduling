@@ -25,3 +25,6 @@
 #define SYS_get_parent_pid 24
 #define SYS_set_process_parent 25
 #define SYS_print_process 26
+#define SYS_set_level 27
+#define SYS_set_mhrrn_param_system 28
+#define SYS_set_mhrrn_param_process 29

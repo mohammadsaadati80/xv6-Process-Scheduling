@@ -113,3 +113,39 @@ void
 sys_print_process(void) {
   print_process();
 }
+
+void
+sys_set_mhrrn_param_process(void) {
+  int pid, priority;
+
+  if(argint(0, &pid) < 0)
+    return;
+  
+  if(argint(1, &priority) < 0)
+    return;
+  
+  set_mhrrn_param_process(pid, priority);
+}
+
+void
+sys_set_mhrrn_param_system(void) {
+  int priority;
+
+  if(argint(0, &priority) < 0)
+    return;
+
+  set_mhrrn_param_system(priority);
+}
+
+void 
+sys_set_level(void) {
+  int pid, level;
+
+  if(argint(0, &pid) < 0)
+    return;
+
+  if(argint(1, &level) < 0)
+    return;
+
+  set_level(pid, level);
+}

@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define MAX_STARVATION 8000
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -88,8 +90,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->level = 1;
+  p->level = 2;
+  p->last_exec = ticks;
   p->arrival_time = ticks;
+  p->exec_time = 1;
   // cprintf("NEW PROCESS\n");
   release(&ptable.lock);
 
@@ -358,12 +362,34 @@ struct proc *lcfs_get_sched_proc() { // not working
   return res;
 }
 
+struct proc *mhrrn_get_sched_proc() {
+  struct proc *p;
+  struct proc *res = 0;
+  int mx_mhrrn = -1;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->level != 3)
+      continue;
+
+    int p_mhrrn = ((((ticks - p->arrival_time) + p->exec_time) / p->exec_time) + p->mhrrn_prior) / 2;
+    if(mx_mhrrn < p_mhrrn){
+      res = p;
+      mx_mhrrn = p_mhrrn;
+      cprintf("MHRRN"); cprintf("%d", p->pid); cprintf(" "); cprintf(p->name); cprintf("\n");
+    }
+  }
+  return res;
+}
+
 struct proc *get_sched_proc() {
   struct proc *p;
   p = rr_get_sched_proc();
   if(p)
     return p;
   p = lcfs_get_sched_proc();
+  if(p) {
+    return p;
+  }
+  p = mhrrn_get_sched_proc();
   if(p) {
     return p;
   }
@@ -378,6 +404,29 @@ struct proc *get_sched_proc() {
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+void age() {
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+
+    if(ticks - p->last_exec > MAX_STARVATION && p->level > 1) {
+      p->level = 1;
+      cprintf("AGE: ");cprintf("%d", p->pid);cprintf(" ");cprintf(p->name);cprintf("\n");
+    }
+  }
+}
+
+// void check() {
+//   struct proc *p;
+//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//     if(p->state == UNUSED)
+//       continue;
+
+//   }
+// }
+
 void
 scheduler(void)
 {
@@ -392,19 +441,24 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
+    age();
     p = get_sched_proc();
     if(p != 0) {
       // cprintf("FLAG ");cprintf(p->name);cprintf("\n");
+      p->last_exec = ticks;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
+      p->exec_time += ticks - p->last_exec;
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+    }
+    else {
+      // cprintf("NO PROCESS RUNING\n");
     }
     release(&ptable.lock);
   }
@@ -675,28 +729,31 @@ print_process(void)
   int i = 0;
 
   cprintf("name");
-  for(i = 0; i < 10 - 4; i++)
+  for(i = 0; i < 18 - 4; i++)
     cprintf(" ");
   cprintf("pid");
-  for(i = 0; i < 10 - 3; i++)
+  for(i = 0; i < 6 - 3; i++)
     cprintf(" ");
   cprintf("state");
   for(i = 0; i < 10 - 5; i++)
     cprintf(" "); 
-  cprintf("queue_level");
-  for(i = 0; i < 10 - 5; i++)
+  cprintf("level");
+  for(i = 0; i < 8 - 5; i++)
     cprintf(" ");
   cprintf("cycle");
   for(i = 0; i < 10 - 7; i++)
     cprintf(" ");
-  cprintf("arrivel");
+  cprintf("arrive");
   for(i = 0; i < 10 - 7; i++)
     cprintf(" ");
-  cprintf("HRNN");
+  cprintf("age");
+  for(i = 0; i < 8 - 3; i++)
+    cprintf(" ");
+  cprintf("HRRN");
   for(i = 0; i < 2; i++)
     cprintf(" ");
   cprintf("\n");
-  for(i = 0; i < 10*6 - 2; i++)
+  for(i = 0; i < 10*8 - 6; i++)
     cprintf(".");
   cprintf("\n");
 
@@ -705,33 +762,59 @@ print_process(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ 
     if (p->state != UNUSED) {
       cprintf(p->name);
-      for(i = 0; i < 10 - strlen(p->name); i++)
+      for(i = 0; i < 18 - strlen(p->name); i++)
         cprintf(" ");
       cprintf("%d",p->pid);
-      for(i = 0; i < 10 - get_int_len(p->pid); i++)
+      for(i = 0; i < 6 - get_int_len(p->pid); i++)
         cprintf(" ");
       cprintf(get_state_string(p->state));
-      for(i = 0; i < 10 - strlen(get_state_string(p->state)); i++)
+      for(i = 0; i < 12 - strlen(get_state_string(p->state)); i++)
         cprintf(" ");
       
-      cprintf("%d", p->level); //todo ???
-      // cprintf(" ");
-      for(i = 0; i < 10 - get_int_len(p->level); i++)
+      cprintf("%d", p->level);
+      for(i = 0; i < 8 - get_int_len(p->level); i++)
         cprintf(" ");
-      // cprintf("%d", p->cycle); //todo ???
-      cprintf(" ");
-      for(i = 0; i < 10 - get_int_len(10); i++)
+      cprintf("%d", p->exec_time);
+      for(i = 0; i < 7 - get_int_len(p->exec_time); i++)
         cprintf(" ");
-      // cprintf("%d", p->arrivel); //todo ???
-      cprintf(" ");
-      for(i = 0; i < 10 - get_int_len(10); i++)
+      cprintf("%d", p->arrival_time);
+      for(i = 0; i < 8 - get_int_len(p->arrival_time); i++)
         cprintf(" ");
-      // cprintf("%d", p->HRNN); //todo ???
-      cprintf(" ");
-      for(i = 0; i < 10 - get_int_len(10); i++)
+      cprintf("%d", ticks - p->last_exec);
+      for(i = 0; i < 8 - get_int_len(ticks - p->last_exec); i++)
+        cprintf(" ");
+      int p_hrrn = (((ticks - p->arrival_time) + p->exec_time) / p->exec_time);
+      cprintf("%d", p_hrrn);
+      for(i = 0; i < 7 - get_int_len(p->last_exec); i++)
         cprintf(" ");
       cprintf("\n");
     }
   }
   release(&ptable.lock);
+}
+
+void
+set_mhrrn_param_process(int pid, int priority) {
+  struct proc* p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid)
+      p->mhrrn_prior = priority;
+  }
+}
+
+void
+set_mhrrn_param_system(int priority) {
+  struct proc* p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    p->mhrrn_prior = priority;
+  }
+}
+
+void 
+set_level(int pid, int level) {
+  struct proc* p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid)
+      p->level = level;
+  }
 }
