@@ -123,6 +123,7 @@ void            yield(void);
 int             calculate_sum_of_digits(int);
 int             get_parent_pid();
 void            set_process_parent(int);
+void            print_process(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

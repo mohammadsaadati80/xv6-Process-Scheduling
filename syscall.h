@@ -24,3 +24,4 @@
 #define SYS_get_file_sectors 23
 #define SYS_get_parent_pid 24
 #define SYS_set_process_parent 25
+#define SYS_print_process 26

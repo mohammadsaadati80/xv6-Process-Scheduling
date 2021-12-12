@@ -108,3 +108,8 @@ sys_set_process_parent(void) {
   cprintf("KERNEL = SYS set process parent. Call for pid %d\n", pid);
   return set_process_parent(pid);
 } 
+
+void
+sys_print_process(void) {
+  print_process();
+}

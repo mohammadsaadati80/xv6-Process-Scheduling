@@ -187,6 +187,8 @@ UPROGS=\
 	_debugger\
 	_program\
 	_sector_tester\
+	_foo\
+	_print_process\
 
 fs.img: mkfs README sector_file.txt sector_file1.txt $(UPROGS)
 	./mkfs fs.img README sector_file.txt sector_file1.txt $(UPROGS)
@@ -256,7 +258,7 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
-	factor.c printf.c umalloc.c\
+	factor.c printf.c umalloc.c foo.c print_process.c\
 	README sector_file.txt sector_file1.txt dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 
