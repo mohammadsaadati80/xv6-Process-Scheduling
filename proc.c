@@ -88,6 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->level = (p->pid % 2) + 1;
 
   release(&ptable.lock);
 
@@ -310,6 +311,59 @@ wait(void)
   }
 }
 
+// Round Robin
+
+// int rr_is_empty(void) {
+//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//     if(p->level == 1)
+//       return 1;
+//   }
+//   return 0;
+// }
+
+struct proc *rr_get_sched_proc() {
+  struct proc *p;
+  // cprintf("SALAM\n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->level != 1)
+      continue;
+
+    // cprintf("FLAG %d\n", p->last_exec_time);
+    return p;
+  }
+  return 0;
+}
+
+struct proc *lcfs_get_sched_proc() {
+  struct proc *p;
+  struct proc *res = 0;
+  // cprintf("SEARCHING FOR LEVEL 2\n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->level != 2)
+      continue;
+
+    // cprintf("FLAG %d\n", p->last_exec_time);
+    res = p;
+  }
+  return res;
+}
+
+struct proc *get_sched_proc() {
+  struct proc *p;
+  p = rr_get_sched_proc();
+  // cprintf("GET PROC!\n");
+  if(p)
+    return p;
+  // cprintf("NO LEVEL 1 FOUND\n");
+  p = lcfs_get_sched_proc();
+  if(p) {
+    // cprintf("LEVEL 2 FOUND\n");
+    return p;
+  }
+  // cprintf("NO LEVEL 2 FOUND\n");
+  return 0;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -331,13 +385,11 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+    p = get_sched_proc();
+    if(p != 0) {
+      p->last_exec_time = ticks;
+      // cprintf("FLAG ");cprintf(p->name);cprintf("\n");
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -350,7 +402,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -571,4 +622,111 @@ set_process_parent(int pid) {
   myp->real_parent = p->parent;
   p->parent = myproc();
   cprintf("proc %d parent changed to %d\n", p->pid, myp->pid);
+}
+
+char*
+get_state_string(int state)
+{
+  if (state == 0) {
+    return "UNUSED";
+  }
+  else if (state == 1) {
+    return "EMBRYO";
+  }
+  else if (state == 2) {
+    return "SLEEPING";
+  }
+  else if (state == 3) {
+    return "RUNNABLE";
+  }
+  else if (state == 4) {
+    return "RUNNING";
+  }
+  else if (state == 5) {
+    return "ZOMBIE";
+  }
+  else {
+    return "";
+  }
+}
+
+int
+get_int_len(int num)
+{
+  int len = 0;
+  if (num == 0)
+    return 1;
+  while (num > 0) {
+    len++;
+    num = num / 10;
+  }
+  return len;
+}
+
+void 
+print_process(void)
+{
+  struct proc *p;
+  int i = 0;
+
+  cprintf("name");
+  for(i = 0; i < 10 - 4; i++)
+    cprintf(" ");
+  cprintf("pid");
+  for(i = 0; i < 10 - 3; i++)
+    cprintf(" ");
+  cprintf("state");
+  for(i = 0; i < 10 - 5; i++)
+    cprintf(" "); 
+  cprintf("queue_level");
+  for(i = 0; i < 10 - 5; i++)
+    cprintf(" ");
+  cprintf("cycle");
+  for(i = 0; i < 10 - 7; i++)
+    cprintf(" ");
+  cprintf("arrivel");
+  for(i = 0; i < 10 - 7; i++)
+    cprintf(" ");
+  cprintf("HRNN");
+  for(i = 0; i < 2; i++)
+    cprintf(" ");
+  cprintf("\n");
+  for(i = 0; i < 10*6 - 2; i++)
+    cprintf(".");
+  cprintf("\n");
+
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ 
+    if (p->state != UNUSED) {
+      cprintf(p->name);
+      for(i = 0; i < 10 - strlen(p->name); i++)
+        cprintf(" ");
+      cprintf("%d",p->pid);
+      for(i = 0; i < 10 - get_int_len(p->pid); i++)
+        cprintf(" ");
+      cprintf(get_state_string(p->state));
+      for(i = 0; i < 10 - strlen(get_state_string(p->state)); i++)
+        cprintf(" ");
+      
+      cprintf("%d", p->level); //todo ???
+      // cprintf(" ");
+      for(i = 0; i < 10 - get_int_len(p->level); i++)
+        cprintf(" ");
+      // cprintf("%d", p->cycle); //todo ???
+      cprintf(" ");
+      for(i = 0; i < 10 - get_int_len(10); i++)
+        cprintf(" ");
+      // cprintf("%d", p->arrivel); //todo ???
+      cprintf(" ");
+      for(i = 0; i < 10 - get_int_len(10); i++)
+        cprintf(" ");
+      // cprintf("%d", p->HRNN); //todo ???
+      cprintf(" ");
+      for(i = 0; i < 10 - get_int_len(10); i++)
+        cprintf(" ");
+      cprintf("\n");
+    }
+  }
+  release(&ptable.lock);
 }

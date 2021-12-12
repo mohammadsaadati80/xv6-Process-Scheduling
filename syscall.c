@@ -107,6 +107,7 @@ extern int sys_calculate_sum_of_digits(void);
 extern int sys_get_file_sectors(void);
 extern int sys_get_parent_pid(void);
 extern int sys_set_process_parent(void);
+extern int sys_print_process(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -134,6 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_get_file_sectors] sys_get_file_sectors,
 [SYS_get_parent_pid] sys_get_parent_pid,
 [SYS_set_process_parent] sys_set_process_parent,
+[SYS_print_process] sys_print_process
 };
 
 void
