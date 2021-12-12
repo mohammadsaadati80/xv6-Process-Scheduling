@@ -88,8 +88,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->level = (p->pid % 2) + 1;
-
+  p->level = 1;
+  p->arrival_time = ticks;
+  // cprintf("NEW PROCESS\n");
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -321,29 +322,38 @@ wait(void)
 //   return 0;
 // }
 
-struct proc *rr_get_sched_proc() {
-  struct proc *p;
-  // cprintf("SALAM\n");
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+static struct proc *rr_last_proc = &ptable.proc[NPROC] - 1;
+
+struct proc *rr_get_sched_proc() { // working ??
+  struct proc *p = rr_last_proc;
+
+  do{
+    p++;
+    if(p == &ptable.proc[NPROC])
+      p = ptable.proc;
     if(p->state != RUNNABLE || p->level != 1)
       continue;
 
-    // cprintf("FLAG %d\n", p->last_exec_time);
+    rr_last_proc = p;
     return p;
-  }
+  } while (p != rr_last_proc);
+
+  rr_last_proc = &ptable.proc[NPROC] - 1;
   return 0;
 }
 
-struct proc *lcfs_get_sched_proc() {
+struct proc *lcfs_get_sched_proc() { // not working
   struct proc *p;
   struct proc *res = 0;
-  // cprintf("SEARCHING FOR LEVEL 2\n");
+  int mx_arrival = -1;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state != RUNNABLE || p->level != 2)
       continue;
 
-    // cprintf("FLAG %d\n", p->last_exec_time);
-    res = p;
+    if(mx_arrival < p->arrival_time) {
+      res = p;
+      mx_arrival = p->arrival_time;
+    }
   }
   return res;
 }
@@ -351,16 +361,12 @@ struct proc *lcfs_get_sched_proc() {
 struct proc *get_sched_proc() {
   struct proc *p;
   p = rr_get_sched_proc();
-  // cprintf("GET PROC!\n");
   if(p)
     return p;
-  // cprintf("NO LEVEL 1 FOUND\n");
   p = lcfs_get_sched_proc();
   if(p) {
-    // cprintf("LEVEL 2 FOUND\n");
     return p;
   }
-  // cprintf("NO LEVEL 2 FOUND\n");
   return 0;
 }
 
@@ -388,7 +394,6 @@ scheduler(void)
 
     p = get_sched_proc();
     if(p != 0) {
-      p->last_exec_time = ticks;
       // cprintf("FLAG ");cprintf(p->name);cprintf("\n");
       c->proc = p;
       switchuvm(p);

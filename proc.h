@@ -52,7 +52,7 @@ struct proc {
   int isvirt;                  // Is this a virtual process
   struct proc *real_parent;    // If this is a virtual process. Store the real parent.
   int level;                   // Process level in multi feedback queue
-  int last_exec_time;          // Last time process was executed;
+  int arrival_time;          // Last time process was executed;
 };
 
 // Process memory is laid out contiguously, low addresses first:
