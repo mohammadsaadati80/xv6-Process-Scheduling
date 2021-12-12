@@ -124,6 +124,9 @@ int             calculate_sum_of_digits(int);
 int             get_parent_pid();
 void            set_process_parent(int);
 void            print_process(void);
+void            set_mhrrn_param_process(int, int);
+void            set_mhrrn_param_system(int);
+void            set_level(int, int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

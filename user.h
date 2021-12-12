@@ -28,6 +28,9 @@ int get_file_sectors(int, void*);
 int get_parent_pid(void);
 void set_process_parent(void);
 void print_process(void);
+void set_level(int, int);
+void set_mhrrn_param_system(int);
+void set_mhrrn_param_process(int, int);
 
 // ulib.c
 int stat(const char*, struct stat*);

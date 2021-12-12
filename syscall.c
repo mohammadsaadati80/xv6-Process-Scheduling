@@ -108,6 +108,9 @@ extern int sys_get_file_sectors(void);
 extern int sys_get_parent_pid(void);
 extern int sys_set_process_parent(void);
 extern int sys_print_process(void);
+extern int sys_set_level(void);
+extern int sys_set_mhrrn_param_system(void);
+extern int sys_set_mhrrn_param_process(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -135,7 +138,10 @@ static int (*syscalls[])(void) = {
 [SYS_get_file_sectors] sys_get_file_sectors,
 [SYS_get_parent_pid] sys_get_parent_pid,
 [SYS_set_process_parent] sys_set_process_parent,
-[SYS_print_process] sys_print_process
+[SYS_print_process] sys_print_process,
+[SYS_set_level] sys_set_level,
+[SYS_set_mhrrn_param_system] sys_set_mhrrn_param_system,
+[SYS_set_mhrrn_param_process] sys_set_mhrrn_param_process,
 };
 
 void
